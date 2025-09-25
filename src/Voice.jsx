@@ -1,61 +1,47 @@
+// src/Voice.jsx
 import { useState } from "react";
+import { FaMicrophone, FaVolumeUp } from "react-icons/fa"; // React icons
+import annyang from "annyang";
 
 function Voice({ onVoiceCommand, distance, duration, travelMode }) {
   const [listening, setListening] = useState(false);
 
-  // 🔊 Speak helper with fallback voices
+  // 🔊 Speak helper
   const speak = (text) => {
     if ("speechSynthesis" in window) {
       const utterance = new SpeechSynthesisUtterance(text);
-
-      // Pick a supported voice dynamically
-      const voices = speechSynthesis.getVoices();
-      const preferredVoice =
-        voices.find((v) => v.lang.includes("en-US")) || voices[0];
-      if (preferredVoice) utterance.voice = preferredVoice;
-
-      utterance.lang = "en-US"; // fallback language
+      utterance.lang = "en-US"; // Change to "am-ET" for Amharic
       speechSynthesis.speak(utterance);
     } else {
-      alert("❌ Sorry, your browser does not support text-to-speech.");
+      alert("Sorry, your browser does not support speech synthesis.");
     }
   };
 
-  // 🎤 Listen helper (will not work on iOS Safari)
+  // 🎤 Listen helper using annyang
   const startListening = () => {
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-      alert("❌ Voice recognition is not supported on this device.");
+    if (!annyang) {
+      alert("Voice recognition not supported in your browser.");
       return;
     }
 
-    const recognition = new SpeechRecognition();
-    recognition.lang = "en-US";
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-
-    recognition.start();
     setListening(true);
 
-    recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
-      console.log("🎙️ Heard:", transcript);
-      if (onVoiceCommand) onVoiceCommand(transcript); // send to parent
-      setListening(false);
+    const commands = {
+      "*command": (cmd) => {
+        console.log("🎙️ Heard:", cmd);
+        if (onVoiceCommand) onVoiceCommand(cmd);
+      },
     };
 
-    recognition.onerror = (event) => {
-      console.error("Speech recognition error:", event.error);
-      alert("⚠️ Could not capture your voice. Try again.");
-      setListening(false);
-    };
+    annyang.addCommands(commands);
+    annyang.start({ autoRestart: true, continuous: false });
 
-    recognition.onend = () => setListening(false);
+    // Stop listening after one result
+    annyang.addCallback("resultMatch", () => setListening(false));
+    annyang.addCallback("error", () => setListening(false));
+    annyang.addCallback("end", () => setListening(false));
   };
 
-  // 📢 Speak when distance/duration change
   const handleSpeakRoute = () => {
     if (distance && duration) {
       speak(
@@ -70,23 +56,25 @@ function Voice({ onVoiceCommand, distance, duration, travelMode }) {
   };
 
   return (
-    <div className="mt-4 flex gap-3 items-center">
+    <div className="flex gap-3 p-3 bg-blue-50 shadow-md rounded-xl w-full sm:w-auto justify-center">
+      {/* Microphone Button */}
       <button
         onClick={startListening}
-        className={`px-4 py-2 rounded-xl shadow-md transition ${
-          listening
-            ? "bg-red-500 text-white animate-pulse"
-            : "bg-purple-600 hover:bg-purple-700 text-white"
+        className={`flex items-center justify-center w-12 h-12 rounded-full transition-colors duration-200 text-white ${
+          listening ? "bg-red-500" : "bg-gray-600 hover:bg-gray-800"
         }`}
+        title={listening ? "Listening..." : "Speak"}
       >
-        🎤 {listening ? "Listening..." : "Speak"}
+        <FaMicrophone size={20} />
       </button>
 
+      {/* Speak Route Button */}
       <button
         onClick={handleSpeakRoute}
-        className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl shadow-md transition"
+        className="flex items-center justify-center w-12 h-12 rounded-full bg-gray-600 hover:bg-gray-800 text-white transition-colors duration-200"
+        title="Speak Route"
       >
-        🔊 Speak Route
+        <FaVolumeUp size={20} />
       </button>
     </div>
   );

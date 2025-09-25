@@ -11,6 +11,7 @@ import {
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import Voice from "./Voice";
+import annyang from "annyang";
 
 /* --------------------------
    Icons (CDN PNGs)
@@ -338,10 +339,8 @@ export default function App() {
         {/* Voice Assistant (passes the transcript string to doSearchAndRoute) */}
         <Voice
           onVoiceCommand={(command) => {
-            if (command && command.trim()) {
-              setSearch(command);
-              doSearchAndRoute(command);
-            }
+            setSearch(command);
+            handleSearch(); // automatically search what was spoken
           }}
           distance={distance}
           duration={duration}
